@@ -17,7 +17,7 @@ int main(){
  Smoother smoother;Pose a{{0,0},100,pi-.02f},b{{100,100},200,-pi+.02f};smoother.update(a,.016f,.5f);
  auto c=smoother.update(b,.016f,.5f);check(std::abs(c.angle)>3,"shortest angle path across pi boundary");check(c.position.x>0&&c.position.x<100,"smoothing position");
  smoother.reset();c=smoother.update(b,.016f,.5f);check(c.position.x==100,"reset");
- Selector selector;Face other=f;other.x=.85;other.w=.1;other.h=.2;
+ Selector selector;Face other=f;other.x=.85f;other.w=.1f;other.h=.2f;
  check(selector.choose({f},0)==0,"initial lock");check(selector.choose({other},.1)==-1,"reject transient stranger");
  check(selector.choose({other,f},.2)==1,"retain original among two faces");check(selector.choose({other},2)==0,"reacquire after timeout");
  check(selector.choose({},3)==-1,"empty detections");

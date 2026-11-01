@@ -18,6 +18,13 @@ runs:
           build_x64
         key: windows-fpf-v1-${{ github.sha }}
         restore-keys: windows-fpf-v1-
+    - name: Preserve tracked source timestamps for incremental builds
+      shell: pwsh
+      run: |
+        git ls-files src tests | ForEach-Object {
+          $stamp = git log -1 --format=%ct -- $_
+          if ($stamp) { (Get-Item -LiteralPath $_).LastWriteTimeUtc = [DateTimeOffset]::FromUnixTimeSeconds([long]$stamp).UtcDateTime }
+        }
     - name: Configure, compile, test and package
       shell: pwsh
       run: ./scripts/build-windows.ps1 -Configuration '${{ inputs.config }}' -Jobs 4
