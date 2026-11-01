@@ -7,6 +7,9 @@
 !/cmake
 !/data
 !/src
+!/scripts
+!/docs
+!/tests
 !.clang-format
 !.gersemirc
 !.gitignore
@@ -15,7 +18,6 @@
 !CMakePresets.json
 !LICENSE
 !README.md
-!SETUP.md
 
 # Exclude lock files
 *.lock.json

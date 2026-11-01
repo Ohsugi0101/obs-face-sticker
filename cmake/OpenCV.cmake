@@ -1,0 +1,26 @@
+include(FetchContent)
+# OpenCV 4.10 third-party projects retain pre-CMake-3.5 minimums.
+set(CMAKE_POLICY_VERSION_MINIMUM 3.5 CACHE STRING "" FORCE)
+set(BUILD_LIST core,imgproc,dnn,objdetect CACHE STRING "" FORCE)
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+# Match libobs/MSVC /MD; static OpenCV must not select /MT.
+set(BUILD_WITH_STATIC_CRT OFF CACHE BOOL "" FORCE)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+foreach(opt BUILD_TESTS BUILD_PERF_TESTS BUILD_EXAMPLES BUILD_opencv_apps BUILD_JAVA BUILD_opencv_python2 BUILD_opencv_python3 WITH_FFMPEG WITH_GSTREAMER WITH_GTK WITH_QT WITH_OPENCL WITH_IPP WITH_ITT WITH_VTK WITH_OPENEXR WITH_JASPER WITH_JPEG WITH_PNG WITH_TIFF WITH_WEBP WITH_V4L WITH_MSMF WITH_DSHOW WITH_AVFOUNDATION WITH_OBSENSOR)
+  set(${opt} OFF CACHE BOOL "" FORCE)
+endforeach()
+set(OPENCV_FORCE_3RDPARTY_BUILD ON CACHE BOOL "" FORCE)
+set(BUILD_PROTOBUF ON CACHE BOOL "" FORCE)
+set(BUILD_ZLIB ON CACHE BOOL "" FORCE)
+set(OPENCV_ENABLE_NONFREE OFF CACHE BOOL "" FORCE)
+set(OPENCV_GENERATE_PKGCONFIG OFF CACHE BOOL "" FORCE)
+# OpenCV is needed only as a linked implementation, never installed by this project.
+set(OPENCV_SKIP_INSTALL_RULES ON CACHE BOOL "" FORCE)
+FetchContent_Declare(opencv URL https://github.com/opencv/opencv/archive/refs/tags/4.10.0.tar.gz
+  URL_HASH SHA256=b2171af5be6b26f7a06b1229948bbb2bdaa74fcf5cd097e0af6378fce50a6eb9 DOWNLOAD_EXTRACT_TIMESTAMP TRUE)
+FetchContent_MakeAvailable(opencv)
+set(OpenCV_LIBS opencv_objdetect opencv_dnn opencv_imgproc opencv_core)
+set(OpenCV_INCLUDE_DIRS "${CMAKE_BINARY_DIR}" "${opencv_BINARY_DIR}" "${opencv_SOURCE_DIR}/include")
+foreach(mod core imgproc dnn objdetect)
+  list(APPEND OpenCV_INCLUDE_DIRS "${opencv_SOURCE_DIR}/modules/${mod}/include")
+endforeach()

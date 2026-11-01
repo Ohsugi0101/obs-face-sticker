@@ -1,55 +1,87 @@
-cmake_minimum_required(VERSION 3.28...3.30)
-
-include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/common/bootstrap.cmake" NO_POLICY_SCOPE)
-
-project(${_name} VERSION ${_version} LANGUAGES C CXX)
-
-option(ENABLE_FRONTEND_API "Use obs-frontend-api for UI functionality" OFF)
-option(ENABLE_QT "Use Qt functionality" OFF)
-
-include(compilerconfig)
-include(defaults)
-include(helpers)
-
-# Use C++17 for OpenCV usage
+cmake_minimum_required(VERSION 3.28...4.4)
+# Tests and local ABI/compile validation do not need template SDK downloads.
+option(FPF_CORE_ONLY "Build dependency-free tracking tests only" OFF)
+set(FPF_LOCAL_OBS_INCLUDE "" CACHE PATH "Local validation: libobs header directory")
+set(FPF_LOCAL_OBS_LIBRARY "" CACHE FILEPATH "Local validation: libobs library")
+if(FPF_CORE_ONLY OR FPF_LOCAL_OBS_INCLUDE)
+  project(face-png-filter VERSION 0.1.0 LANGUAGES C CXX)
+else()
+  include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/common/bootstrap.cmake" NO_POLICY_SCOPE)
+  project(${_name} VERSION ${_version} LANGUAGES C CXX)
+  option(ENABLE_FRONTEND_API "Use frontend API" OFF)
+  option(ENABLE_QT "Use Qt" OFF)
+  include(compilerconfig)
+  include(defaults)
+  include(helpers)
+endif()
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
-add_library(${CMAKE_PROJECT_NAME} MODULE)
-
-find_package(libobs REQUIRED)
-target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE OBS::libobs)
-
-# OpenCV: required for face detection (DNN/YuNet) and image processing.
-# On Windows CI we install via vcpkg in the workflow; on Linux/macOS via system packages.
-find_package(OpenCV REQUIRED COMPONENTS core imgproc imgcodecs dnn objdetect)
-target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE ${OpenCV_LIBS})
+include(CTest)
+if(BUILD_TESTING)
+  add_executable(tracking-test tests/tracking-test.cpp)
+  target_include_directories(tracking-test PRIVATE src)
+  add_test(NAME tracking COMMAND tracking-test)
+endif()
+if(FPF_CORE_ONLY)
+  return()
+endif()
+set(CMAKE_COMPILE_WARNING_AS_ERROR OFF) # Vendored OpenCV warnings must not fail the build.
+option(FPF_BUILD_OPENCV "Build pinned, static OpenCV" ON)
+if(FPF_BUILD_OPENCV)
+  include(cmake/OpenCV.cmake)
+else()
+  find_package(OpenCV 4.10 REQUIRED COMPONENTS core imgproc objdetect dnn)
+endif()
+find_package(Threads REQUIRED)
+add_library(${CMAKE_PROJECT_NAME} MODULE src/plugin.cpp src/detector.cpp)
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE ${OpenCV_INCLUDE_DIRS})
-
-if(ENABLE_FRONTEND_API)
-  find_package(obs-frontend-api REQUIRED)
-  target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE OBS::obs-frontend-api)
+target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE ${OpenCV_LIBS} Threads::Threads)
+if(FPF_LOCAL_OBS_INCLUDE)
+  target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE "${FPF_LOCAL_OBS_INCLUDE}")
+  target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE "${FPF_LOCAL_OBS_LIBRARY}")
+  set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES PREFIX "")
+else()
+  find_package(libobs REQUIRED)
+  target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE OBS::libobs)
+  set_target_properties_plugin(${CMAKE_PROJECT_NAME} PROPERTIES OUTPUT_NAME ${_name})
+endif()
+if(MSVC)
+  target_compile_options(${CMAKE_PROJECT_NAME} PRIVATE /utf-8 /EHsc)
+  target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE NOMINMAX)
+else()
+  target_compile_options(${CMAKE_PROJECT_NAME} PRIVATE -Wall -Wextra)
+endif()
+if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/data/models/face_detection_yunet_2023mar.onnx")
+  message(FATAL_ERROR "Run python scripts/setup-model.py first")
+endif()
+# Static dependencies keep third-party DLLs out of OBS's shared DLL namespace.
+if(WIN32)
+  install(FILES LICENSE README.md docs/THIRD_PARTY.md DESTINATION "face-png-filter/data/licenses")
 endif()
 
-if(ENABLE_QT)
-  find_package(Qt6 COMPONENTS Widgets Core)
-  target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE Qt6::Core Qt6::Widgets)
-  target_compile_options(
-    ${CMAKE_PROJECT_NAME}
-    PRIVATE $<$<C_COMPILER_ID:Clang,AppleClang>:-Wno-quoted-include-in-framework-header -Wno-comma>
-  )
-  set_target_properties(
-    ${CMAKE_PROJECT_NAME}
-    PROPERTIES AUTOMOC ON AUTOUIC ON AUTORCC ON
-  )
+if(BUILD_TESTING)
+  add_executable(detector-test tests/detector-test.cpp src/detector.cpp)
+  set_target_properties(detector-test PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+  target_include_directories(detector-test PRIVATE src ${OpenCV_INCLUDE_DIRS})
+  target_link_libraries(detector-test PRIVATE ${OpenCV_LIBS} Threads::Threads)
+  if(FPF_LOCAL_OBS_INCLUDE)
+    target_include_directories(detector-test PRIVATE "${FPF_LOCAL_OBS_INCLUDE}")
+    target_link_libraries(detector-test PRIVATE "${FPF_LOCAL_OBS_LIBRARY}")
+  else()
+    target_link_libraries(detector-test PRIVATE OBS::libobs)
+  endif()
+  set(FPF_TEST_RGBA "" CACHE FILEPATH "Optional 320x320 RGBA face fixture (not distributed)")
+  if(FPF_TEST_RGBA)
+    add_test(NAME detector COMMAND detector-test "${CMAKE_CURRENT_SOURCE_DIR}/data/models/face_detection_yunet_2023mar.onnx" "${FPF_TEST_RGBA}")
+  endif()
 endif()
-
-target_sources(
-  ${CMAKE_PROJECT_NAME}
-  PRIVATE
-    src/plugin-main.c
-    src/face-sticker-filter.cpp
-    src/face-sticker-filter.h
-)
-
-set_target_properties_plugin(${CMAKE_PROJECT_NAME} PROPERTIES OUTPUT_NAME ${_name})
+option(FPF_OBS_SMOKE "Build a real-libobs graphics test (developer only)" OFF)
+if(FPF_OBS_SMOKE)
+  add_executable(obs-smoke tests/obs-smoke.cpp)
+  if(FPF_LOCAL_OBS_INCLUDE)
+    target_include_directories(obs-smoke PRIVATE "${FPF_LOCAL_OBS_INCLUDE}")
+    target_link_libraries(obs-smoke PRIVATE "${FPF_LOCAL_OBS_LIBRARY}")
+  else()
+    target_link_libraries(obs-smoke PRIVATE OBS::libobs)
+  endif()
+endif()

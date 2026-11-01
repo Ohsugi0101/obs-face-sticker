@@ -1,0 +1,9 @@
+uniform float4x4 ViewProj;
+uniform texture2d image;
+uniform float opacity;
+sampler_state linearSampler { Filter = Linear; AddressU = Clamp; AddressV = Clamp; };
+struct V { float4 pos : POSITION; float2 uv : TEXCOORD0; };
+V VS(V v) { V o; o.pos=mul(float4(v.pos.xyz,1.0),ViewProj); o.uv=v.uv; return o; }
+// PNG is straight alpha. Output is premultiplied for OBS's ONE/INVSRCALPHA blend.
+float4 PS(V v) : TARGET { float4 c=image.Sample(linearSampler,v.uv); c.a*=opacity; c.rgb*=c.a; return c; }
+technique Draw { pass { vertex_shader=VS(v); pixel_shader=PS(v); } }
