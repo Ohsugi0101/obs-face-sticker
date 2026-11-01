@@ -1,4 +1,12 @@
 include(FetchContent)
+# The OBS template defines UNICODE directory-wide. OpenCV 4.10's Win32
+# implementation intentionally calls ANSI APIs with char buffers.
+# Keep these defines on our own DLL instead of leaking them into dependencies.
+if(MSVC)
+  get_directory_property(_fpf_definitions COMPILE_DEFINITIONS)
+  list(REMOVE_ITEM _fpf_definitions UNICODE _UNICODE)
+  set_property(DIRECTORY PROPERTY COMPILE_DEFINITIONS "${_fpf_definitions}")
+endif()
 # OpenCV 4.10 third-party projects retain pre-CMake-3.5 minimums.
 set(CMAKE_POLICY_VERSION_MINIMUM 3.5 CACHE STRING "" FORCE)
 set(BUILD_LIST core,imgproc,dnn,objdetect CACHE STRING "" FORCE)

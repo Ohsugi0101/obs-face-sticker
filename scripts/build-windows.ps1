@@ -23,6 +23,7 @@ try {
     Copy-Item 'docs/TESTING.md' $stage
     $zip = Join-Path $root 'dist/face-png-filter-0.1.0-windows-x64.zip'
     Compress-Archive -Path "$stage/*" -DestinationPath $zip -Force
+    Run 'python' @('scripts/check-package.py', $zip)
     Get-FileHash -Algorithm SHA256 $zip
     Write-Host "Created $zip"
 } finally { Pop-Location }

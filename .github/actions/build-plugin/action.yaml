@@ -10,6 +10,21 @@ inputs:
 runs:
   using: composite
   steps:
+    - uses: actions/cache/restore@v4
+      id: deps
+      with:
+        path: |
+          .deps
+          build_x64
+        key: windows-fpf-v1-${{ github.sha }}
+        restore-keys: windows-fpf-v1-
     - name: Configure, compile, test and package
       shell: pwsh
       run: ./scripts/build-windows.ps1 -Configuration '${{ inputs.config }}' -Jobs 4
+    - uses: actions/cache/save@v4
+      if: always() && steps.deps.outputs.cache-hit != 'true'
+      with:
+        path: |
+          .deps
+          build_x64
+        key: windows-fpf-v1-${{ github.sha }}
