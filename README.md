@@ -2,7 +2,7 @@
 
 透過PNGを1人の顔の検出点に重ねるC++プラグインです。ソースコード、固定バージョンのモデル、CMake設定、日本語UI、Windowsのビルド・インストールスクリプトを含みます。
 
-**Windows版のDLLおよびOBSでの実動作は未検証です。Windows上でビルドし、下記の実機テストを行ってください。Windowsで完成条件を満たしたことを保証するリリースではありません。** 実施済みの検証結果は [docs/VALIDATION.md](docs/VALIDATION.md) に記載しています。
+**Windows x64のMSVCビルド・自動テスト・ZIP生成を確認済みです。** [成功したGitHub Actions](https://github.com/Ohsugi0101/obs-face-sticker/actions/runs/41320563410)。ビルド済みZIPにはDLL・モデル・シェーダー・日本語UI・インストールスクリプトを含みます。WindowsのOBS実機でのカメラ追従・描画・安定性は未検証です。詳細は [docs/VALIDATION.md](docs/VALIDATION.md) を参照してください。
 
 ## 対応前提
 
@@ -29,6 +29,12 @@
 - [固定コミットのYuNetモデル・ライセンス](https://github.com/opencv/opencv_zoo/tree/48b10fa505aeb51fbd127fc60a5c660040e823b7/models/face_detection_yunet)
 - [MediaPipe Face Landmarker公式ガイド](https://developers.google.com/edge/mediapipe/solutions/vision/face_landmarker)
 
+## 友人・一般利用者向けダウンロード
+
+[ReleasesからWindows用ZIPをダウンロード](https://github.com/Ohsugi0101/obs-face-sticker/releases/tag/v0.1.0-beta.1)してください。「Source code」は開発者用です。
+ZIPを「すべて展開」し、OBS終了後に **INSTALL.cmdをダブルクリック** → 管理者確認で「はい」を選ぶとインストールできます。詳しくは [QUICKSTART.txt](QUICKSTART.txt) を参照してください。
+Windows OBS実機での動作は未検証のベータ版です。不具合は [Issues](https://github.com/Ohsugi0101/obs-face-sticker/issues) へ、OBSバージョンと再現手順を添えてください。
+
 ## WindowsでビルドしてZIPを作る
 
 1. Visual Studio 2022の「C++によるデスクトップ開発」、MSVC v143、Windows SDK **10.0.22621以上**をインストールします。CMake 3.30以上、Git、Python 3をPATHに追加します。CMake 4.xにも互換ポリシー設定を入れています。
@@ -53,8 +59,8 @@ ctest --test-dir build_x64 -C RelWithDebInfo --output-on-failure
 cmake --install build_x64 --config RelWithDebInfo --prefix dist/stage
 ```
 
-ZIP化にはビルドスクリプトを使用してください。単独の `cmake --install` はプラグインのフォルダーだけを作成します。
-GitHub Actionsの `.github/workflows/build-windows.yml` でも同じビルドが可能です。本納品時点ではこのワークフローをリモート実行していません。
+ZIP化にはビルドスクリプトを使用してください。単独の `cmake --install` はプラグインに加えてOpenCVの開発用SDKも配置します。ビルドスクリプトは必要なファイルだけをZIPに含めます。
+GitHub Actionsの `.github/workflows/build-windows.yml` でも同じビルドが可能です。本納品では既存の非公開リポジトリ `Ohsugi0101/obs-face-sticker` の専用ブランチから、同じビルドスクリプトを実行して成功しています。
 
 ## OBSへインストール
 
@@ -132,4 +138,4 @@ PNGなし・読込失敗・顔なしでは元映像を表示します。PNGの�
 
 ## テストと制限
 
-[実機テスト手順](docs/TESTING.md) と [実施済み検証記録](docs/VALIDATION.md) を確認してください。主要な未検証事項はWindows MSVCビルド、D3D11上の描画・色・アルファ、実カメラでの追従、720p30/60fpsの負荷、OBS終了時の実機動作です。これらを確認して初めて、依頼の完成条件1〜9を実機で判定できます。
+[実機テスト手順](docs/TESTING.md) と [実施済み検証記録](docs/VALIDATION.md) を確認してください。Windows MSVCビルド・追跡数学テスト・x64 DLLの必須exportとモデルを含むZIP構成の検査は完了しています。主要な未検証事項はWindows D3D11上の描画・色・アルファ、実カメラでの追従、720p30/60fpsの負荷、OBS終了時の実機動作です。これらを確認して初めて、依頼の完成条件1〜9を実機で判定できます。

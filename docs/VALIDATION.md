@@ -1,8 +1,23 @@
 # 検証記録
 
-実施日：2026-11-01（日本時間）
+実施日：macOS検証 2026-11-01、Windowsビルド検証 2026-11-02（日本時間）
 
-## 実際に確認した環境
+## Windows x64ビルド結果（2026-11-02追記）
+
+- 実行環境：GitHub Actions `windows-2022`（Windows Server 2022 x64）
+- MSVC 19.44.35229.0、Visual Studio 2022、Windows SDK 10.0.22621.0、CMake 3.31.6
+- OBS SDK 31.1.1、OpenCV 4.10.0静的リンク、Release構成
+- [成功した実行](https://github.com/Ohsugi0101/obs-face-sticker/actions/runs/41320563410)、ソースコミット `ad75e9ebf`（専用ブランチ `release/face-png-filter-build-20261101`）
+- DLLのコンパイル・最適化リンク：成功
+- CTest：**1/1成功**（tracking）。Windowsでの実モデル推論テストは未実施
+- x64 PE32+形式、OBS必須export、ZIP内リソース、モデルSHA-256の検査：成功
+- WindowsバイナリZIP生成・GitHub Artifactへのアップロード：成功
+- DLL SHA-256：`f6857ef930d5d661299fbe7afc8838a717f0de7a3c615c264e81d3dbd739a1b0`
+- 主な実行時依存：`obs.dll`、Microsoft VC++ Runtime/UCRT（OpenCV DLLは不要）
+
+CIの元ZIPにはOpenCVの開発用SDKも含まれたため、納品ZIPは必要なプラグイン・データ・説明書に絞って再圧縮しました。**DLL・PDB・モデル・シェーダーはCI成果物と同一**です。説明書を今回の検証結果へ更新し、`BUILD-INFO.json` に元ZIPとDLLのハッシュを保存しています。ソースのパッケージスクリプトも同じファイル選択へ修正しました。Windows OBS実機でのロード・カメラ・D3D11描画は引き続き未検証です。
+
+## macOSで実際に確認した環境
 
 - macOS arm64、Apple M4、AppleClang 21
 - インストール済みOBS Studio 32.2.2の `libobs.framework` と `libobs-opengl.dylib`
@@ -34,23 +49,26 @@
 
 ## 未検証
 
-- **Windows 11 / MSVCでのビルド・DLLロード・インストールスクリプト実行**
+- Windows 11のOBS実機でのDLLロード・インストールスクリプト実行
 - Windows D3D11上のステージング転送、シェーダー、PNGのアルファ・色管理
 - 実カメラの移動、傾き、近接・遠方、再接続
 - Windows版OBS31/32/33の個別互換性
 - 1280×720/30fps、60fpsの負荷・長時間配信・録画
 - 複数フィルターチェーン、実機でのクロップ・左右反転
 - 実OBS UIでの設定保存復元、終了・繰り返し削除、GPUメモリ増減
-- GitHub Actionsのリモート実行、Windows用バイナリZIP生成
 
-したがって、現段階は**実装とmacOS libobsでの合成試験を終えたソース納品**です。Windowsで完成条件を満たした「検証済み完成版」とは扱っていません。
+現段階は**Windows x64 DLL・導入用ZIPの生成、Windowsの数学テスト、macOS libobsでの合成試験を終えた納品**です。Windows OBS実機で完成条件を満たした「動作検証済み完成版」とは扱っていません。
 
 ## 開発中に修正したビルド問題
 
 - OpenCVをサブプロジェクトとして組み込んだ際、未使用のOrbbecセンサー検出がトップ階層のパスを参照して構成に失敗。`WITH_OBSENSOR=OFF`で無効化。
 - OpenCV生成ヘッダーがトップのバイナリディレクトリに置かれるため、そのディレクトリをinclude pathへ追加。
 - ローカルarm64検証のOBSヘッダーにはSIMDeおよび生成obsconfig.hが必要だったため、検証用環境に用意。Windowsの公式SDK構成とは別。
-- Windowsのランタイム不一致を避けるため、静的OpenCVにも `BUILD_WITH_STATIC_CRT=OFF`（/MD）を明示。Windowsでの実ビルド確認は未実施。
+- Windowsのランタイム不一致を避けるため、静的OpenCVにも `BUILD_WITH_STATIC_CRT=OFF`（/MD）を明示。Windowsの実ビルドで成功を確認。
+
+- OBSテンプレートのディレクトリ共通 `UNICODE` / `_UNICODE` がOpenCVのANSI API呼び出しと衝突したため、OpenCVへ渡さずプラグインのターゲットに限定。
+- MSVCの警告をエラー扱いにする数学テストで、小数定数3か所に `f` を付けて型変換警告を修正。
+- OpenCVのインストール規則がSDKのヘッダー・静的ライブラリも配置したため、ZIP作成対象をプラグインとランタイムデータへ限定。
 
 ## グラフィックステストの再現（開発者向け）
 

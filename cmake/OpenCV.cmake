@@ -22,8 +22,7 @@ set(BUILD_PROTOBUF ON CACHE BOOL "" FORCE)
 set(BUILD_ZLIB ON CACHE BOOL "" FORCE)
 set(OPENCV_ENABLE_NONFREE OFF CACHE BOOL "" FORCE)
 set(OPENCV_GENERATE_PKGCONFIG OFF CACHE BOOL "" FORCE)
-# OpenCV is needed only as a linked implementation, never installed by this project.
-set(OPENCV_SKIP_INSTALL_RULES ON CACHE BOOL "" FORCE)
+# The Windows packaging script excludes OpenCV SDK install files from the ZIP.
 FetchContent_Declare(opencv URL https://github.com/opencv/opencv/archive/refs/tags/4.10.0.tar.gz
   URL_HASH SHA256=b2171af5be6b26f7a06b1229948bbb2bdaa74fcf5cd097e0af6378fce50a6eb9 DOWNLOAD_EXTRACT_TIMESTAMP TRUE)
 FetchContent_MakeAvailable(opencv)

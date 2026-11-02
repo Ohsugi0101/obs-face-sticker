@@ -1,6 +1,19 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param([string]$OBSRoot = "$env:ProgramFiles/obs-studio")
 $ErrorActionPreference = 'Stop'
+# Request Windows UAC elevation automatically for the standard Program Files install.
+$identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+$principal = New-Object Security.Principal.WindowsPrincipal($identity)
+if (!$principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+    $launchArgs = '-NoProfile -ExecutionPolicy Bypass -File "{0}" -OBSRoot "{1}"' -f $PSCommandPath, $OBSRoot
+    try {
+        $child = Start-Process -FilePath (Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe') -Verb RunAs -ArgumentList $launchArgs -Wait -PassThru
+        exit $child.ExitCode
+    } catch {
+        throw 'Administrator approval was cancelled or failed. Right-click INSTALL.cmd and choose Run as administrator.'
+    }
+}
+
 if (Get-Process obs64 -ErrorAction SilentlyContinue) { throw 'Close OBS before installing.' }
 # This script lives next to face-png-filter/ in the generated ZIP.
 $source = Join-Path $PSScriptRoot 'face-png-filter'

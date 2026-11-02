@@ -18,6 +18,7 @@
 !CMakePresets.json
 !LICENSE
 !README.md
+!QUICKSTART.txt
 
 # Exclude lock files
 *.lock.json
